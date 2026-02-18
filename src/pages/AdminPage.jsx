@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DEFAULT_DAYS, DEFAULT_SCHEDULE } from '../constants';
 
 function AdminPage({
@@ -33,12 +34,39 @@ function AdminPage({
     return `https://wa.me/${booking.userPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message.trim())}`;
   };
 
+  const [activeAdminPanel, setActiveAdminPanel] = useState('canchas');
+
   return (
     <section className="card admin-card">
       <h2>Administración</h2>
 
+      <div className="admin-panel-nav" role="tablist" aria-label="Paneles de administración">
+        <button
+          type="button"
+          className={activeAdminPanel === 'canchas' ? 'nav-pill nav-pill-active' : 'nav-pill'}
+          onClick={() => setActiveAdminPanel('canchas')}
+        >
+          Gestión de canchas
+        </button>
+        <button
+          type="button"
+          className={activeAdminPanel === 'turnos' ? 'nav-pill nav-pill-active' : 'nav-pill'}
+          onClick={() => setActiveAdminPanel('turnos')}
+        >
+          Turnos
+        </button>
+        <button
+          type="button"
+          className={activeAdminPanel === 'roles' ? 'nav-pill nav-pill-active' : 'nav-pill'}
+          onClick={() => setActiveAdminPanel('roles')}
+        >
+          Gestión de roles
+        </button>
+      </div>
+
       <div className="admin-panels">
-        <article className="admin-panel">
+        {activeAdminPanel === 'canchas' && (
+          <article className="admin-panel">
           <h3>Canchas</h3>
           <p className="admin-panel-subtitle">CRUD de canchas, horarios por día y feriados.</p>
 
@@ -106,8 +134,10 @@ function AdminPage({
             ))}
           </ul>
         </article>
+        )}
 
-        <article className="admin-panel">
+        {activeAdminPanel === 'turnos' && (
+          <article className="admin-panel">
           <h3>Turnos reservados</h3>
           <p className="admin-panel-subtitle">Tabla con reservas, cancha y datos del cliente.</p>
           <div className="admin-table-wrapper">
@@ -181,12 +211,15 @@ function AdminPage({
             </table>
           </div>
         </article>
+        )}
 
-        <article className="admin-panel">
-          <h3>Gestión de roles</h3>
+        {activeAdminPanel === 'roles' && (
+          <article className="admin-panel">
+            <h3>Gestión de roles</h3>
           <p className="admin-panel-subtitle">Panel reservado para administrar permisos de usuario.</p>
-          <p>Próximamente podrás asignar y editar roles desde esta sección.</p>
-        </article>
+            <p>Próximamente podrás asignar y editar roles desde esta sección.</p>
+          </article>
+        )}
       </div>
     </section>
   );

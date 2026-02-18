@@ -295,6 +295,12 @@ input {
   gap: 1rem;
 }
 
+.admin-panel-nav {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .admin-panel {
   background: #0f172a;
   border: 1px solid #334155;
