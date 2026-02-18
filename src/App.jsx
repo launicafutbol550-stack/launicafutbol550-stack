@@ -93,11 +93,6 @@ function App() {
     return window.confirm(message);
   };
 
-  const requestConfirmation = (message) => {
-    if (typeof window === 'undefined') return true;
-    return window.confirm(message);
-  };
-
   const loadMyBookings = async (uid) => {
     if (!uid) {
       setMyBookings([]);
