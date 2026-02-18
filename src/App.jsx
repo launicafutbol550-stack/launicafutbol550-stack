@@ -42,6 +42,26 @@ const getHours = (scheduleForDay) => {
 const buildPhone = ({ countryCode, areaCode, phoneNumber }) =>
   `+${countryCode.trim()} ${areaCode.trim()} ${phoneNumber.trim()}`.replace(/\s+/g, ' ').trim();
 
+const parsePhone = (phone = '') => {
+  const normalizedPhone = phone.trim().replace(/\s+/g, ' ');
+  const parts = normalizedPhone.split(' ').filter(Boolean);
+
+  if (parts.length >= 3) {
+    const [countryCodeRaw, areaCodeRaw, ...phoneNumberParts] = parts;
+    return {
+      countryCode: countryCodeRaw.replace(/\D/g, ''),
+      areaCode: areaCodeRaw.replace(/\D/g, ''),
+      phoneNumber: phoneNumberParts.join('').replace(/\D/g, '')
+    };
+  }
+
+  return {
+    countryCode: '',
+    areaCode: '',
+    phoneNumber: normalizedPhone.replace(/\D/g, '')
+  };
+};
+
 const isProfileComplete = (profile) => Boolean(profile?.firstName && profile?.lastName && profile?.phone);
 
 const buildConfirmationToken = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -86,6 +106,7 @@ function App() {
   const [selectedRoleUser, setSelectedRoleUser] = useState(null);
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [manualBookingData, setManualBookingData] = useState(emptyManualBooking);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const requestConfirmation = (message) => {
     if (typeof window === 'undefined') return true;
@@ -113,6 +134,7 @@ function App() {
       if (!authUser) {
         setProfile(null);
         setMyBookings([]);
+        setEditingProfile(false);
         setLoading(false);
         return;
       }
@@ -207,6 +229,7 @@ function App() {
 
   const goToAuth = (mode) => {
     setAuthView(mode);
+    setEditingProfile(false);
     setActiveSection('registro');
   };
 
@@ -261,6 +284,7 @@ function App() {
       setProfile(payload);
       setRegisterData(emptyRegister);
       setStatusMessage('Cuenta creada correctamente.');
+      setEditingProfile(false);
       setActiveSection('landing');
     } catch {
       setAuthError('No se pudo registrar la cuenta.');
@@ -287,8 +311,8 @@ function App() {
       await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
       setProfile(payload);
       setRegisterData(emptyRegister);
-      setStatusMessage('Perfil guardado. Ya podés reservar tu turno.');
-      setActiveSection('landing');
+      setEditingProfile(false);
+      setStatusMessage('Perfil guardado correctamente.');
     } catch {
       setAuthError('No se pudo guardar tu perfil.');
     }
@@ -298,6 +322,26 @@ function App() {
     if (!requestConfirmation('¿Estás seguro de que querés cerrar sesión?')) return;
     await signOut(auth);
     setStatusMessage('Sesión cerrada.');
+  };
+
+  const startEditingProfile = () => {
+    const parsedPhone = parsePhone(profile?.phone || '');
+    setRegisterData((prev) => ({
+      ...prev,
+      firstName: profile?.firstName || '',
+      lastName: profile?.lastName || '',
+      countryCode: parsedPhone.countryCode,
+      areaCode: parsedPhone.areaCode,
+      phoneNumber: parsedPhone.phoneNumber
+    }));
+    setAuthError('');
+    setEditingProfile(true);
+  };
+
+  const cancelEditingProfile = () => {
+    setRegisterData(emptyRegister);
+    setAuthError('');
+    setEditingProfile(false);
   };
 
   const bookSlot = async (courtId, hour) => {
@@ -637,12 +681,14 @@ function App() {
     }
   };
 
+  const parsedProfilePhone = parsePhone(profile?.phone || '');
+
   const profileDraft = {
     firstName: registerData.firstName || profile?.firstName || '',
     lastName: registerData.lastName || profile?.lastName || '',
-    countryCode: registerData.countryCode,
-    areaCode: registerData.areaCode,
-    phoneNumber: registerData.phoneNumber
+    countryCode: registerData.countryCode || parsedProfilePhone.countryCode,
+    areaCode: registerData.areaCode || parsedProfilePhone.areaCode,
+    phoneNumber: registerData.phoneNumber || parsedProfilePhone.phoneNumber
   };
 
   return (
@@ -722,6 +768,9 @@ function App() {
             onGoogleLogin={loginWithGoogle}
             onSaveProfile={saveProfile}
             onLogout={logoutUser}
+            onStartEditProfile={startEditingProfile}
+            onCancelEditProfile={cancelEditingProfile}
+            editingProfile={editingProfile}
             profileComplete={isProfileComplete(profile)}
           />
         )}
