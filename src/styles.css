@@ -223,6 +223,11 @@ form {
   gap: 0.65rem;
 }
 
+.auth-helper {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
 .auth-switch {
   display: inline-flex;
   background: #0f172a;

@@ -227,6 +227,12 @@ function App() {
     }
   }, [user, profile]);
 
+  useEffect(() => {
+    if (!canAccessAdmin && activeSection === 'admin') {
+      setActiveSection('landing');
+    }
+  }, [activeSection, canAccessAdmin]);
+
   const goToAuth = (mode) => {
     setAuthView(mode);
     setEditingProfile(false);
@@ -271,6 +277,8 @@ function App() {
       return;
     }
 
+    setAuthLoading(true);
+
     try {
       const credentials = await createUserWithEmailAndPassword(auth, registerData.email, registerData.password);
       const payload = {
@@ -288,6 +296,8 @@ function App() {
       setActiveSection('landing');
     } catch {
       setAuthError('No se pudo registrar la cuenta.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -300,6 +310,8 @@ function App() {
       setAuthError('Completá código de país, código de área y número de teléfono.');
       return;
     }
+
+    setAuthLoading(true);
 
     try {
       const payload = {
@@ -315,6 +327,8 @@ function App() {
       setStatusMessage('Perfil guardado correctamente.');
     } catch {
       setAuthError('No se pudo guardar tu perfil.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -694,7 +708,7 @@ function App() {
   return (
     <div className="app">
       <Header />
-      <MainNav activeSection={activeSection} onChangeSection={setActiveSection} />
+      <MainNav activeSection={activeSection} onChangeSection={setActiveSection} canAccessAdmin={canAccessAdmin} />
 
       <main>
         {loading ? (
@@ -759,7 +773,10 @@ function App() {
             authLoading={authLoading}
             loginData={loginData}
             registerData={registerData}
-            onChangeAuthView={setAuthView}
+            onChangeAuthView={(view) => {
+              setAuthView(view);
+              setAuthError('');
+            }}
             onChangeLogin={(field, value) => setLoginData((prev) => ({ ...prev, [field]: value }))}
             onChangeRegister={(field, value) => setRegisterData((prev) => ({ ...prev, [field]: value }))}
             onChangeProfileDraft={(field, value) => setRegisterData((prev) => ({ ...prev, [field]: value }))}
@@ -775,7 +792,7 @@ function App() {
           />
         )}
 
-        {!loading && activeSection === 'admin' && (
+        {!loading && canAccessAdmin && activeSection === 'admin' && (
           <AdminPage
             courts={courts}
             schedules={schedules}
