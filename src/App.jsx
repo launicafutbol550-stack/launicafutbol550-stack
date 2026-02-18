@@ -312,19 +312,14 @@ function App() {
     setBookingInProgress(true);
     try {
       await runTransaction(db, async (transaction) => {
-        const sameSlotQuery = query(
-          collection(db, 'bookings'),
-          where('date', '==', selectedDate),
-          where('courtId', '==', courtId),
-          where('hour', '==', hour)
-        );
-        const sameSlotSnapshot = await transaction.get(sameSlotQuery);
+        const bookingId = `${selectedDate}_${courtId}_${hour}`;
+        const bookingRef = doc(db, 'bookings', bookingId);
+        const existingBooking = await transaction.get(bookingRef);
 
-        if (!sameSlotSnapshot.empty) {
+        if (existingBooking.exists()) {
           throw new Error('SLOT_ALREADY_BOOKED');
         }
 
-        const bookingRef = doc(collection(db, 'bookings'));
         transaction.set(bookingRef, {
           courtId,
           hour,
