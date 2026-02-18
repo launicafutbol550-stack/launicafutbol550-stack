@@ -20,3 +20,34 @@ export const formatLongDate = (isoDate) =>
     day: 'numeric',
     month: 'long'
   });
+
+
+const argentinaNowFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+export const getArgentinaNow = () => {
+  const parts = argentinaNowFormatter.formatToParts(new Date());
+  const partMap = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return {
+    date: `${partMap.year}-${partMap.month}-${partMap.day}`,
+    hour: Number(partMap.hour),
+    minute: Number(partMap.minute)
+  };
+};
+
+export const isPastSlotInArgentina = (isoDate, hour) => {
+  const now = getArgentinaNow();
+
+  if (isoDate < now.date) return true;
+  if (isoDate > now.date) return false;
+
+  return hour < now.hour || (hour === now.hour && now.minute > 0);
+};
