@@ -1,3 +1,12 @@
+const WEEK_DAYS = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+
+const formatBookingDate = (isoDate) => {
+  const date = new Date(`${isoDate}T00:00:00`);
+  const weekDay = WEEK_DAYS[date.getDay()] || '';
+  const dayOfMonth = date.getDate();
+  return `${weekDay} ${dayOfMonth}`;
+};
+
 function MyBookingsPage({ user, bookings, courts, onCancelBooking, onGoLogin }) {
   if (!user) {
     return (
@@ -28,7 +37,7 @@ function MyBookingsPage({ user, bookings, courts, onCancelBooking, onGoLogin }) 
               <div>
                 <strong>{courtNamesById[booking.courtId] || 'Cancha'}</strong>
                 <p>
-                  {booking.date} · {booking.hour}:00 hs
+                  {formatBookingDate(booking.date)} - {booking.hour}:00 hs
                 </p>
               </div>
               <button type="button" className="btn-secondary" onClick={() => onCancelBooking(booking.id)}>
