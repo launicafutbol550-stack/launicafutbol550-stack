@@ -5,8 +5,9 @@ const sections = [
   { id: 'admin', label: 'Administración', requiresAdmin: true }
 ];
 
-function MainNav({ activeSection, onChangeSection, canAccessAdmin }) {
-  const visibleSections = sections.filter((section) => !section.requiresAdmin || canAccessAdmin);
+function MainNav({ activeSection, onChangeSection, canAccessAdmin = false }) {
+  const hasAdminAccess = Boolean(canAccessAdmin);
+  const visibleSections = sections.filter((section) => !section.requiresAdmin || hasAdminAccess);
 
   return (
     <nav className="main-nav" aria-label="Secciones principales">
