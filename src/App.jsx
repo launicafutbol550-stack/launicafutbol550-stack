@@ -43,6 +43,8 @@ const buildPhone = ({ countryCode, areaCode, phoneNumber }) =>
 
 const isProfileComplete = (profile) => Boolean(profile?.firstName && profile?.lastName && profile?.phone);
 
+const buildConfirmationToken = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
   const [activeSection, setActiveSection] = useState('landing');
@@ -55,6 +57,7 @@ function App() {
   const [schedules, setSchedules] = useState({});
   const [holidays, setHolidays] = useState([]);
   const [bookingsByCourtHour, setBookingsByCourtHour] = useState({});
+  const [adminBookings, setAdminBookings] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = toLocalDate(new Date());
@@ -66,6 +69,8 @@ function App() {
   const [registerData, setRegisterData] = useState(emptyRegister);
   const [newCourtName, setNewCourtName] = useState('');
   const [newHoliday, setNewHoliday] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState(null);
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
 
   const loadMyBookings = async (uid) => {
     if (!uid) {
@@ -140,11 +145,30 @@ function App() {
       bookedMap[`${data.courtId}-${data.hour}`] = { id: booking.id, ...data };
     });
     setBookingsByCourtHour(bookedMap);
+
+    const allBookingsSnapshot = await getDocs(collection(db, 'bookings'));
+    const allBookings = allBookingsSnapshot.docs
+      .map((booking) => ({ id: booking.id, ...booking.data() }))
+      .sort((a, b) => `${a.date || ''}-${a.hour || 0}`.localeCompare(`${b.date || ''}-${b.hour || 0}`));
+    setAdminBookings(allBookings);
   };
 
   useEffect(() => {
     loadCoreData(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const bookingId = params.get('confirmBooking');
+    const token = params.get('token');
+
+    if (!bookingId || !token) {
+      setPendingConfirmation(null);
+      return;
+    }
+
+    setPendingConfirmation({ bookingId, token });
+  }, []);
 
   useEffect(() => {
     if (user && !isProfileComplete(profile)) {
@@ -276,6 +300,8 @@ function App() {
       userId: user.uid,
       userName: `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim(),
       userPhone: profile?.phone || '',
+      status: 'reservado',
+      confirmationToken: buildConfirmationToken(),
       createdAt: serverTimestamp()
     });
 
@@ -287,6 +313,55 @@ function App() {
     await deleteDoc(doc(db, 'bookings', bookingId));
     setStatusMessage('Reserva cancelada correctamente.');
     await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
+  };
+
+  const cancelBookingFromAdmin = async (bookingId) => {
+    await deleteDoc(doc(db, 'bookings', bookingId));
+    setStatusMessage('Turno cancelado desde administración.');
+    await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
+  };
+
+  const respondBookingConfirmation = async (willAttend) => {
+    if (!pendingConfirmation || confirmationLoading) return;
+
+    setConfirmationLoading(true);
+    try {
+      const bookingRef = doc(db, 'bookings', pendingConfirmation.bookingId);
+      const bookingDoc = await getDoc(bookingRef);
+
+      if (!bookingDoc.exists()) {
+        setStatusMessage('El turno no existe o ya fue eliminado.');
+        return;
+      }
+
+      const bookingData = bookingDoc.data();
+      const expectedToken = bookingData.confirmationToken || pendingConfirmation.bookingId;
+      if (expectedToken !== pendingConfirmation.token) {
+        setStatusMessage('El enlace de confirmación no es válido.');
+        return;
+      }
+
+      if (willAttend) {
+        if (bookingData.status !== 'confirmado') {
+          await setDoc(bookingRef, { status: 'confirmado', confirmedAt: serverTimestamp() }, { merge: true });
+          setStatusMessage('¡Gracias! Confirmaste tu asistencia al turno.');
+        } else {
+          setStatusMessage('Este turno ya estaba confirmado.');
+        }
+      } else {
+        await deleteDoc(bookingRef);
+        setStatusMessage('Liberaste el turno correctamente para otra persona.');
+      }
+
+      await loadCoreData(selectedDate);
+      if (user?.uid) await loadMyBookings(user.uid);
+      setPendingConfirmation(null);
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch {
+      setStatusMessage('No se pudo procesar la confirmación del turno.');
+    } finally {
+      setConfirmationLoading(false);
+    }
   };
 
   const addCourt = async (event) => {
@@ -365,6 +440,26 @@ function App() {
           </section>
         ) : null}
 
+        {!loading && pendingConfirmation && (
+          <section className="card confirmation-card">
+            <h3>¿Confirmás la asistencia a tu turno?</h3>
+            <p>Elegí una opción para continuar con tu reserva.</p>
+            <div className="confirmation-actions">
+              <button type="button" disabled={confirmationLoading} onClick={() => respondBookingConfirmation(true)}>
+                Sí, voy a ir
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={confirmationLoading}
+                onClick={() => respondBookingConfirmation(false)}
+              >
+                No, libero el turno para alguien más
+              </button>
+            </div>
+          </section>
+        )}
+
         {!loading && activeSection === 'landing' && (
           <LandingPage
             user={user}
@@ -427,6 +522,8 @@ function App() {
             onSaveScheduleHour={saveScheduleHour}
             onAddHoliday={addHoliday}
             onRemoveHoliday={removeHoliday}
+            adminBookings={adminBookings}
+            onCancelBooking={cancelBookingFromAdmin}
           />
         )}
       </main>
