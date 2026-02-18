@@ -91,17 +91,30 @@ function App() {
         return;
       }
 
-      const userRef = doc(db, 'users', authUser.uid);
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
-        setProfile(userDoc.data());
-      } else {
+      try {
+        const userRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          setProfile(userDoc.data());
+        } else {
+          setProfile({
+            firstName: authUser.displayName?.split(' ')[0] || '',
+            lastName: authUser.displayName?.split(' ').slice(1).join(' ') || '',
+            email: authUser.email || '',
+            phone: ''
+          });
+        }
+      } catch {
         setProfile({
           firstName: authUser.displayName?.split(' ')[0] || '',
           lastName: authUser.displayName?.split(' ').slice(1).join(' ') || '',
           email: authUser.email || '',
           phone: ''
         });
+        setAuthError('Sesión iniciada, pero no se pudo leer tu perfil de Firestore. Revisá reglas/permisos.');
+      } finally {
+        setLoading(false);
+        setAuthLoadingState(false);
       }
       setLoading(false);
       setAuthLoadingState(false);
@@ -141,6 +154,13 @@ function App() {
     loadCoreData(selectedDate);
   }, [selectedDate]);
 
+  useEffect(() => {
+    if (user && !isProfileComplete(profile)) {
+      setActiveSection('registro');
+      setAuthView('register');
+    }
+  }, [user, profile]);
+
   const loginWithGoogle = async () => {
     if (authLoading) return;
 
@@ -148,7 +168,7 @@ function App() {
     setAuthLoadingState(true);
 
     try {
-      setStatusMessage('Redirigiendo a Google para iniciar sesión...');
+      setStatusMessage('Redirigiendo a Google para iniciar sesión... Si volvés y seguís en esta pantalla, revisá dominios autorizados en Firebase Auth.');
       await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       setAuthError(getGoogleAuthErrorMessage(error));
