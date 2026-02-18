@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut
 } from 'firebase/auth';
 import {
@@ -40,11 +40,31 @@ const buildPhone = ({ countryCode, areaCode, phoneNumber }) =>
 
 const isProfileComplete = (profile) => Boolean(profile?.firstName && profile?.lastName && profile?.phone);
 
+const getGoogleAuthErrorMessage = (error) => {
+  if (!error?.code) return 'No se pudo iniciar sesión con Google. Intentá nuevamente.';
+
+  switch (error.code) {
+    case 'auth/configuration-not-found':
+      return 'Google Sign-In no está configurado en Firebase. Activá el proveedor Google en Authentication > Sign-in method.';
+    case 'auth/unauthorized-domain':
+      return 'Este dominio no está autorizado en Firebase Auth. Agregalo en Authentication > Settings > Authorized domains.';
+    case 'auth/popup-blocked':
+      return 'El navegador bloqueó la ventana emergente. Habilitá popups o intentá nuevamente.';
+    case 'auth/popup-closed-by-user':
+      return 'Se cerró la ventana de Google antes de completar el acceso.';
+    case 'auth/operation-not-supported-in-this-environment':
+      return 'El entorno actual no soporta popup. Probá desde el navegador principal o usá redirección.';
+    default:
+      return 'No se pudo iniciar sesión con Google. Verificá la configuración de Firebase e intentá nuevamente.';
+  }
+};
+
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
   const [activeSection, setActiveSection] = useState('landing');
   const [authView, setAuthView] = useState('login');
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoadingState] = useState(false);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [courts, setCourts] = useState([]);
@@ -67,6 +87,7 @@ function App() {
       if (!authUser) {
         setProfile(null);
         setLoading(false);
+        setAuthLoadingState(false);
         return;
       }
 
@@ -83,6 +104,7 @@ function App() {
         });
       }
       setLoading(false);
+      setAuthLoadingState(false);
     });
 
     return () => unsub();
@@ -120,16 +142,17 @@ function App() {
   }, [selectedDate]);
 
   const loginWithGoogle = async () => {
+    if (authLoading) return;
+
     setAuthError('');
-    setAuthLoading(true);
+    setAuthLoadingState(true);
 
     try {
-      await signInWithPopup(auth, googleProvider);
-      setStatusMessage('Sesión iniciada correctamente.');
-      setActiveSection('registro');
-      setAuthView('register');
-    } catch {
-      setAuthError('No se pudo iniciar sesión con Google. Intentá nuevamente.');
+      setStatusMessage('Redirigiendo a Google para iniciar sesión...');
+      await signInWithRedirect(auth, googleProvider);
+    } catch (error) {
+      setAuthError(getGoogleAuthErrorMessage(error));
+      setAuthLoadingState(false);
     }
   };
 
@@ -298,6 +321,7 @@ function App() {
             onSaveProfile={saveProfile}
             onLogout={logoutUser}
             profileComplete={isProfileComplete(profile)}
+            authLoading={authLoading}
           />
         )}
 

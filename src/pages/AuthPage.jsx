@@ -9,7 +9,8 @@ function AuthPage({
   onLoginWithGoogle,
   onSaveProfile,
   onLogout,
-  profileComplete
+  profileComplete,
+  authLoading
 }) {
   return (
     <section className="card auth-card">
@@ -37,8 +38,8 @@ function AuthPage({
               ? 'Iniciá sesión con tu cuenta de Google para acceder a tus turnos.'
               : 'Registrate con Google y luego completá tus datos para poder reservar.'}
           </p>
-          <button type="button" onClick={onLoginWithGoogle}>
-            Continuar con Google
+          <button type="button" onClick={onLoginWithGoogle} disabled={authLoading}>
+            {authLoading ? "Redirigiendo..." : "Continuar con Google"}
           </button>
         </div>
       )}
