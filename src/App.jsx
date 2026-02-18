@@ -21,7 +21,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { DEFAULT_SCHEDULE, emptyLogin, emptyRegister } from './constants';
-import { buildUpcomingDates, toLocalDate } from './utils/date';
+import { buildUpcomingDates, isPastSlotInArgentina, toLocalDate } from './utils/date';
 import Header from './components/Header';
 import MainNav from './components/MainNav';
 import LandingPage from './pages/LandingPage';
@@ -257,6 +257,11 @@ function App() {
     const slotKey = `${courtId}-${hour}`;
     if (bookingsByCourtHour[slotKey]) return;
 
+    if (isPastSlotInArgentina(selectedDate, hour)) {
+      setStatusMessage('Ese horario ya pasó según la hora de Argentina (GMT-3).');
+      return;
+    }
+
     const alreadyBookedInDate = Object.values(bookingsByCourtHour).some((booking) => booking.userId === user.uid);
     if (alreadyBookedInDate) {
       setStatusMessage('Solo podés reservar un turno por día. Cancelá tu reserva actual para tomar otro horario.');
@@ -335,9 +340,9 @@ function App() {
     () =>
       courts.map((court) => ({
         ...court,
-        hours: getHours((schedules[court.id] || DEFAULT_SCHEDULE)[dayIndex])
+        hours: getHours((schedules[court.id] || DEFAULT_SCHEDULE)[dayIndex]).filter((hour) => !isPastSlotInArgentina(selectedDate, hour))
       })),
-    [courts, schedules, dayIndex]
+    [courts, schedules, dayIndex, selectedDate]
   );
 
   const profileDraft = {
