@@ -111,9 +111,16 @@ main {
 
 .landing-card,
 .auth-card,
-.admin-card {
+.admin-card,
+.confirmation-card {
   display: grid;
   gap: 1rem;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .banner {

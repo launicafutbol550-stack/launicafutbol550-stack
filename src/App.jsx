@@ -69,6 +69,8 @@ function App() {
   const [registerData, setRegisterData] = useState(emptyRegister);
   const [newCourtName, setNewCourtName] = useState('');
   const [newHoliday, setNewHoliday] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState(null);
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
 
   const loadMyBookings = async (uid) => {
     if (!uid) {
@@ -160,42 +162,13 @@ function App() {
     const bookingId = params.get('confirmBooking');
     const token = params.get('token');
 
-    if (!bookingId || !token) return;
+    if (!bookingId || !token) {
+      setPendingConfirmation(null);
+      return;
+    }
 
-    const confirmBookingFromLink = async () => {
-      try {
-        const bookingRef = doc(db, 'bookings', bookingId);
-        const bookingDoc = await getDoc(bookingRef);
-
-        if (!bookingDoc.exists()) {
-          setStatusMessage('El turno no existe o ya fue eliminado.');
-          return;
-        }
-
-        const bookingData = bookingDoc.data();
-        const expectedToken = bookingData.confirmationToken || bookingId;
-        if (expectedToken !== token) {
-          setStatusMessage('El enlace de confirmación no es válido.');
-          return;
-        }
-
-        if (bookingData.status !== 'confirmado') {
-          await setDoc(bookingRef, { status: 'confirmado', confirmedAt: serverTimestamp() }, { merge: true });
-          setStatusMessage('Turno confirmado correctamente.');
-          await loadCoreData(selectedDate);
-          if (user?.uid) await loadMyBookings(user.uid);
-        } else {
-          setStatusMessage('Este turno ya estaba confirmado.');
-        }
-      } catch {
-        setStatusMessage('No se pudo confirmar el turno.');
-      } finally {
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    };
-
-    confirmBookingFromLink();
-  }, [selectedDate, user]);
+    setPendingConfirmation({ bookingId, token });
+  }, []);
 
   useEffect(() => {
     if (user && !isProfileComplete(profile)) {
@@ -348,6 +321,49 @@ function App() {
     await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
   };
 
+  const respondBookingConfirmation = async (willAttend) => {
+    if (!pendingConfirmation || confirmationLoading) return;
+
+    setConfirmationLoading(true);
+    try {
+      const bookingRef = doc(db, 'bookings', pendingConfirmation.bookingId);
+      const bookingDoc = await getDoc(bookingRef);
+
+      if (!bookingDoc.exists()) {
+        setStatusMessage('El turno no existe o ya fue eliminado.');
+        return;
+      }
+
+      const bookingData = bookingDoc.data();
+      const expectedToken = bookingData.confirmationToken || pendingConfirmation.bookingId;
+      if (expectedToken !== pendingConfirmation.token) {
+        setStatusMessage('El enlace de confirmación no es válido.');
+        return;
+      }
+
+      if (willAttend) {
+        if (bookingData.status !== 'confirmado') {
+          await setDoc(bookingRef, { status: 'confirmado', confirmedAt: serverTimestamp() }, { merge: true });
+          setStatusMessage('¡Gracias! Confirmaste tu asistencia al turno.');
+        } else {
+          setStatusMessage('Este turno ya estaba confirmado.');
+        }
+      } else {
+        await deleteDoc(bookingRef);
+        setStatusMessage('Liberaste el turno correctamente para otra persona.');
+      }
+
+      await loadCoreData(selectedDate);
+      if (user?.uid) await loadMyBookings(user.uid);
+      setPendingConfirmation(null);
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch {
+      setStatusMessage('No se pudo procesar la confirmación del turno.');
+    } finally {
+      setConfirmationLoading(false);
+    }
+  };
+
   const addCourt = async (event) => {
     event.preventDefault();
     if (!newCourtName.trim()) return;
@@ -423,6 +439,26 @@ function App() {
             <p>Cargando datos...</p>
           </section>
         ) : null}
+
+        {!loading && pendingConfirmation && (
+          <section className="card confirmation-card">
+            <h3>¿Confirmás la asistencia a tu turno?</h3>
+            <p>Elegí una opción para continuar con tu reserva.</p>
+            <div className="confirmation-actions">
+              <button type="button" disabled={confirmationLoading} onClick={() => respondBookingConfirmation(true)}>
+                Sí, voy a ir
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={confirmationLoading}
+                onClick={() => respondBookingConfirmation(false)}
+              >
+                No, libero el turno para alguien más
+              </button>
+            </div>
+          </section>
+        )}
 
         {!loading && activeSection === 'landing' && (
           <LandingPage
