@@ -15,6 +15,23 @@ function AdminPage({
   onRemoveHoliday,
   adminBookings
 }) {
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+  const buildConfirmationLink = (booking) => {
+    if (!appOrigin || !booking?.id) return '';
+    const token = booking.confirmationToken || booking.id;
+    return `${appOrigin}?confirmBooking=${booking.id}&token=${token}`;
+  };
+
+  const buildWhatsappConfirmUrl = (booking, courtName) => {
+    if (!booking?.userPhone) return '';
+    const confirmationLink = buildConfirmationLink(booking);
+    if (!confirmationLink) return '';
+
+    const message = `Hola ${booking.userName || ''}, por favor confirmá tu turno en ${courtName || 'la cancha'} el ${booking.date} a las ${booking.hour}:00 ingresando aquí: ${confirmationLink}`;
+    return `https://wa.me/${booking.userPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message.trim())}`;
+  };
+
   return (
     <section className="card admin-card">
       <h2>Administración</h2>
@@ -100,37 +117,54 @@ function AdminPage({
                   <th>Hora</th>
                   <th>Cancha</th>
                   <th>Nombre y apellido</th>
+                  <th>Estado</th>
                   <th>WhatsApp</th>
+                  <th>Confirmación</th>
                 </tr>
               </thead>
               <tbody>
                 {adminBookings.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>No hay turnos reservados.</td>
+                    <td colSpan={7}>No hay turnos reservados.</td>
                   </tr>
                 ) : (
-                  adminBookings.map((booking) => (
-                    <tr key={booking.id}>
-                      <td>{booking.date || '-'}</td>
-                      <td>{booking.hour !== undefined && booking.hour !== null ? `${booking.hour}:00` : '-'}</td>
-                      <td>{courts.find((court) => court.id === booking.courtId)?.name || booking.courtId}</td>
-                      <td>{booking.userName || '-'}</td>
-                      <td>
-                        {booking.userPhone ? (
-                          <a
-                            className="btn-whatsapp"
-                            href={`https://wa.me/${booking.userPhone.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            WhatsApp
-                          </a>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  adminBookings.map((booking) => {
+                    const courtName = courts.find((court) => court.id === booking.courtId)?.name || booking.courtId;
+                    const confirmUrl = buildWhatsappConfirmUrl(booking, courtName);
+
+                    return (
+                      <tr key={booking.id}>
+                        <td>{booking.date || '-'}</td>
+                        <td>{booking.hour !== undefined && booking.hour !== null ? `${booking.hour}:00` : '-'}</td>
+                        <td>{courtName}</td>
+                        <td>{booking.userName || '-'}</td>
+                        <td>{booking.status || 'reservado'}</td>
+                        <td>
+                          {booking.userPhone ? (
+                            <a
+                              className="btn-whatsapp"
+                              href={`https://wa.me/${booking.userPhone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              WhatsApp
+                            </a>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td>
+                          {confirmUrl ? (
+                            <a className="btn-secondary btn-confirm" href={confirmUrl} target="_blank" rel="noreferrer">
+                              Solicitar confirmación
+                            </a>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

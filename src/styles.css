@@ -332,6 +332,11 @@ input {
   font-weight: 700;
 }
 
+.btn-confirm {
+  text-decoration: none;
+  display: inline-block;
+}
+
 .admin-court-header {
   display: flex;
   justify-content: space-between;

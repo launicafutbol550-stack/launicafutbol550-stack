@@ -43,6 +43,8 @@ const buildPhone = ({ countryCode, areaCode, phoneNumber }) =>
 
 const isProfileComplete = (profile) => Boolean(profile?.firstName && profile?.lastName && profile?.phone);
 
+const buildConfirmationToken = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
   const [activeSection, setActiveSection] = useState('landing');
@@ -152,6 +154,48 @@ function App() {
   useEffect(() => {
     loadCoreData(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const bookingId = params.get('confirmBooking');
+    const token = params.get('token');
+
+    if (!bookingId || !token) return;
+
+    const confirmBookingFromLink = async () => {
+      try {
+        const bookingRef = doc(db, 'bookings', bookingId);
+        const bookingDoc = await getDoc(bookingRef);
+
+        if (!bookingDoc.exists()) {
+          setStatusMessage('El turno no existe o ya fue eliminado.');
+          return;
+        }
+
+        const bookingData = bookingDoc.data();
+        const expectedToken = bookingData.confirmationToken || bookingId;
+        if (expectedToken !== token) {
+          setStatusMessage('El enlace de confirmación no es válido.');
+          return;
+        }
+
+        if (bookingData.status !== 'confirmado') {
+          await setDoc(bookingRef, { status: 'confirmado', confirmedAt: serverTimestamp() }, { merge: true });
+          setStatusMessage('Turno confirmado correctamente.');
+          await loadCoreData(selectedDate);
+          if (user?.uid) await loadMyBookings(user.uid);
+        } else {
+          setStatusMessage('Este turno ya estaba confirmado.');
+        }
+      } catch {
+        setStatusMessage('No se pudo confirmar el turno.');
+      } finally {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    };
+
+    confirmBookingFromLink();
+  }, [selectedDate, user]);
 
   useEffect(() => {
     if (user && !isProfileComplete(profile)) {
@@ -283,6 +327,8 @@ function App() {
       userId: user.uid,
       userName: `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim(),
       userPhone: profile?.phone || '',
+      status: 'reservado',
+      confirmationToken: buildConfirmationToken(),
       createdAt: serverTimestamp()
     });
 
