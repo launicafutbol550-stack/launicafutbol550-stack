@@ -223,6 +223,11 @@ form {
   gap: 0.65rem;
 }
 
+.auth-helper {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
 .auth-switch {
   display: inline-flex;
   background: #0f172a;
@@ -248,6 +253,40 @@ form {
   display: grid;
   grid-template-columns: repeat(3, minmax(90px, 1fr));
   gap: 0.5rem;
+}
+
+.field-hint {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.password-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.password-field input {
+  width: 100%;
+}
+
+.password-toggle {
+  min-width: 72px;
+}
+
+.btn-link {
+  background: transparent;
+  color: #93c5fd;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font-weight: 600;
+}
+
+.btn-link:hover {
+  transform: none;
+  text-decoration: underline;
 }
 
 

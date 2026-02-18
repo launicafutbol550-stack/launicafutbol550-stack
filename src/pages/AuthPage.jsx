@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 function AuthPage({
   user,
   profile,
@@ -21,11 +23,18 @@ function AuthPage({
   profileComplete,
   authLoading
 }) {
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+
   return (
     <section className="card auth-card">
       <h2>Cuenta</h2>
       {!user && (
         <div className="auth-flow">
+          <p className="auth-helper">
+            Entrá rápido con Google o elegí correo y contraseña. Solo te toma 1 minuto.
+          </p>
+
           <div className="auth-switch">
             <button
               type="button"
@@ -44,7 +53,7 @@ function AuthPage({
           </div>
 
           <button type="button" className="btn-secondary" onClick={onGoogleLogin} disabled={authLoading}>
-            Ingresar con Google
+            {authLoading ? 'Redirigiendo…' : 'Ingresar con Google'}
           </button>
 
           {authView === 'login' ? (
@@ -55,16 +64,32 @@ function AuthPage({
                 placeholder="Correo electrónico"
                 value={loginData.email}
                 onChange={(event) => onChangeLogin('email', event.target.value)}
+                autoComplete="email"
                 required
               />
-              <input
-                type="password"
-                placeholder="Contraseña"
-                value={loginData.password}
-                onChange={(event) => onChangeLogin('password', event.target.value)}
-                required
-              />
-              <button type="submit">Iniciar sesión</button>
+              <div className="password-field">
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  placeholder="Contraseña"
+                  value={loginData.password}
+                  onChange={(event) => onChangeLogin('password', event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="btn-secondary password-toggle"
+                  onClick={() => setShowLoginPassword((prev) => !prev)}
+                >
+                  {showLoginPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+              <button type="submit" disabled={authLoading}>
+                {authLoading ? 'Ingresando…' : 'Iniciar sesión'}
+              </button>
+              <button type="button" className="btn-link" onClick={() => onChangeAuthView('register')}>
+                ¿No tenés cuenta? Registrate
+              </button>
             </form>
           ) : (
             <form onSubmit={onRegister} className="profile-form">
@@ -74,6 +99,7 @@ function AuthPage({
                 placeholder="Nombre"
                 value={registerData.firstName}
                 onChange={(event) => onChangeRegister('firstName', event.target.value)}
+                autoComplete="given-name"
                 required
               />
               <input
@@ -81,6 +107,7 @@ function AuthPage({
                 placeholder="Apellido"
                 value={registerData.lastName}
                 onChange={(event) => onChangeRegister('lastName', event.target.value)}
+                autoComplete="family-name"
                 required
               />
               <div className="phone-grid">
@@ -89,6 +116,7 @@ function AuthPage({
                   placeholder="Código país (54)"
                   value={registerData.countryCode}
                   onChange={(event) => onChangeRegister('countryCode', event.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
                   required
                 />
                 <input
@@ -96,6 +124,7 @@ function AuthPage({
                   placeholder="Código área (11)"
                   value={registerData.areaCode}
                   onChange={(event) => onChangeRegister('areaCode', event.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
                   required
                 />
                 <input
@@ -103,25 +132,43 @@ function AuthPage({
                   placeholder="Número"
                   value={registerData.phoneNumber}
                   onChange={(event) => onChangeRegister('phoneNumber', event.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
                   required
                 />
               </div>
+              <small className="field-hint">Ejemplo: +54 11 12345678</small>
               <input
                 type="email"
                 placeholder="Correo electrónico"
                 value={registerData.email}
                 onChange={(event) => onChangeRegister('email', event.target.value)}
+                autoComplete="email"
                 required
               />
-              <input
-                type="password"
-                placeholder="Contraseña"
-                value={registerData.password}
-                onChange={(event) => onChangeRegister('password', event.target.value)}
-                required
-                minLength={6}
-              />
-              <button type="submit">Registrarme</button>
+              <div className="password-field">
+                <input
+                  type={showRegisterPassword ? 'text' : 'password'}
+                  placeholder="Contraseña (mínimo 6 caracteres)"
+                  value={registerData.password}
+                  onChange={(event) => onChangeRegister('password', event.target.value)}
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary password-toggle"
+                  onClick={() => setShowRegisterPassword((prev) => !prev)}
+                >
+                  {showRegisterPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+              <button type="submit" disabled={authLoading}>
+                {authLoading ? 'Creando cuenta…' : 'Registrarme'}
+              </button>
+              <button type="button" className="btn-link" onClick={() => onChangeAuthView('login')}>
+                Ya tengo cuenta, quiero iniciar sesión
+              </button>
             </form>
           )}
         </div>

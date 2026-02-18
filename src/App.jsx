@@ -275,6 +275,8 @@ function App() {
       return;
     }
 
+    setAuthLoading(true);
+
     try {
       const credentials = await createUserWithEmailAndPassword(auth, registerData.email, registerData.password);
       const payload = {
@@ -291,6 +293,8 @@ function App() {
       setActiveSection('landing');
     } catch {
       setAuthError('No se pudo registrar la cuenta.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -303,6 +307,8 @@ function App() {
       setAuthError('Completá código de país, código de área y número de teléfono.');
       return;
     }
+
+    setAuthLoading(true);
 
     try {
       const payload = {
@@ -319,6 +325,8 @@ function App() {
       setActiveSection('landing');
     } catch {
       setAuthError('No se pudo guardar tu perfil.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -763,7 +771,10 @@ function App() {
             authLoading={authLoading}
             loginData={loginData}
             registerData={registerData}
-            onChangeAuthView={setAuthView}
+            onChangeAuthView={(view) => {
+              setAuthView(view);
+              setAuthError('');
+            }}
             onChangeLogin={(field, value) => setLoginData((prev) => ({ ...prev, [field]: value }))}
             onChangeRegister={(field, value) => setRegisterData((prev) => ({ ...prev, [field]: value }))}
             onChangeProfileDraft={(field, value) => setRegisterData((prev) => ({ ...prev, [field]: value }))}
