@@ -26,7 +26,6 @@ import { DEFAULT_SCHEDULE, emptyLogin, emptyRegister } from './constants';
 import { buildUpcomingDates, isPastSlotInArgentina, toLocalDate } from './utils/date';
 import Header from './components/Header';
 import MainNav from './components/MainNav';
-import HomePage from './pages/HomePage';
 import BookingPage from './pages/BookingPage';
 import AuthPage from './pages/AuthPage';
 import AdminPage from './pages/AdminPage';
@@ -84,7 +83,7 @@ const emptyManualBooking = {
 
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
-  const [activeSection, setActiveSection] = useState('inicio');
+  const [activeSection, setActiveSection] = useState('reservas');
   const [authView, setAuthView] = useState('login');
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
@@ -238,7 +237,7 @@ function App() {
 
   useEffect(() => {
     if (!canAccessAdmin && activeSection === 'admin') {
-      setActiveSection('inicio');
+      setActiveSection('reservas');
     }
   }, [activeSection, canAccessAdmin]);
 
@@ -269,7 +268,7 @@ function App() {
       await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
       setLoginData(emptyLogin);
       setStatusMessage('Sesión iniciada.');
-      setActiveSection('inicio');
+      setActiveSection('reservas');
     } catch {
       setAuthError('No se pudo iniciar sesión. Verificá tus credenciales.');
     } finally {
@@ -309,7 +308,7 @@ function App() {
       setRegisterData(emptyRegister);
       setStatusMessage('Cuenta creada correctamente.');
       setEditingProfile(false);
-      setActiveSection('inicio');
+      setActiveSection('reservas');
     } catch {
       setAuthError('No se pudo registrar la cuenta.');
     } finally {
@@ -773,14 +772,10 @@ function App() {
             </div>
           </section>
         )}
-
-        {!loading && activeSection === 'inicio' && (
-          <HomePage onGoToBookings={() => setActiveSection('reservas')} />
-        )}
-
         {!loading && activeSection === 'reservas' && (
           <BookingPage
             user={user}
+            myBookings={myBookings}
             selectedDate={selectedDate}
             upcomingDates={upcomingDates}
             holidays={holidays}
