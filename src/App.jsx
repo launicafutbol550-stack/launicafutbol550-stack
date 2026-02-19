@@ -26,7 +26,7 @@ import { DEFAULT_SCHEDULE, emptyLogin, emptyRegister } from './constants';
 import { buildUpcomingDates, isPastSlotInArgentina, toLocalDate } from './utils/date';
 import Header from './components/Header';
 import MainNav from './components/MainNav';
-import LandingPage from './pages/LandingPage';
+import BookingPage from './pages/BookingPage';
 import AuthPage from './pages/AuthPage';
 import AdminPage from './pages/AdminPage';
 import MyBookingsPage from './pages/MyBookingsPage';
@@ -83,7 +83,7 @@ const emptyManualBooking = {
 
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
-  const [activeSection, setActiveSection] = useState('landing');
+  const [activeSection, setActiveSection] = useState('reservas');
   const [authView, setAuthView] = useState('login');
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
@@ -237,7 +237,7 @@ function App() {
 
   useEffect(() => {
     if (!canAccessAdmin && activeSection === 'admin') {
-      setActiveSection('landing');
+      setActiveSection('reservas');
     }
   }, [activeSection, canAccessAdmin]);
 
@@ -268,7 +268,7 @@ function App() {
       await signInWithEmailAndPassword(auth, loginData.email, loginData.password);
       setLoginData(emptyLogin);
       setStatusMessage('Sesión iniciada.');
-      setActiveSection('landing');
+      setActiveSection('reservas');
     } catch {
       setAuthError('No se pudo iniciar sesión. Verificá tus credenciales.');
     } finally {
@@ -308,7 +308,7 @@ function App() {
       setRegisterData(emptyRegister);
       setStatusMessage('Cuenta creada correctamente.');
       setEditingProfile(false);
-      setActiveSection('landing');
+      setActiveSection('reservas');
     } catch {
       setAuthError('No se pudo registrar la cuenta.');
     } finally {
@@ -772,9 +772,8 @@ function App() {
             </div>
           </section>
         )}
-
-        {!loading && activeSection === 'landing' && (
-          <LandingPage
+        {!loading && activeSection === 'reservas' && (
+          <BookingPage
             user={user}
             selectedDate={selectedDate}
             upcomingDates={upcomingDates}
