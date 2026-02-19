@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DEFAULT_DAYS, DEFAULT_SCHEDULE } from '../constants';
+import FootballRaffleScene from '../components/FootballRaffleScene';
 
 function AdminPage({
   courts,
@@ -557,6 +558,7 @@ function AdminPage({
             </label>
 
             <div className={raffleAnimating ? 'raffle-wheel raffle-wheel-spinning' : 'raffle-wheel'}>
+              <FootballRaffleScene spinning={raffleAnimating} />
               <p className="raffle-wheel-title">El ganador de {raffleDraft.itemName || '...'} es:</p>
               <p className="raffle-wheel-name">{raffleDraft.winnerName || '🎁 Girá la ruleta 🎁'}</p>
             </div>
