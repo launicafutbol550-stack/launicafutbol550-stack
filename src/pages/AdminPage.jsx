@@ -71,7 +71,7 @@ function AdminPage({
   const buildConfirmationLink = (booking) => {
     if (!appOrigin || !booking?.id) return '';
     const token = booking.confirmationToken || booking.id;
-    return `${appOrigin}?confirmBooking=${booking.id}&token=${token}`;
+    return `${appOrigin}/launicafutbol550-stack/?confirmBooking=${booking.id}&token=${token}`;
   };
 
   const buildWhatsappConfirmUrl = (booking, courtName) => {
