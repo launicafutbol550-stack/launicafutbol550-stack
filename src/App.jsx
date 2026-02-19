@@ -101,6 +101,14 @@ const emptyManualBooking = {
   phone: ''
 };
 
+const DEFAULT_COURT_PRICE = 58800;
+
+const parseCourtPrice = (value) => {
+  const normalizedValue = Number(value);
+  if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) return DEFAULT_COURT_PRICE;
+  return Math.round(normalizedValue);
+};
+
 function App() {
   const upcomingDates = useMemo(() => buildUpcomingDates(7), []);
   const [activeSection, setActiveSection] = useState('reservas');
@@ -134,6 +142,8 @@ function App() {
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [manualBookingData, setManualBookingData] = useState(emptyManualBooking);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [courtPrice, setCourtPrice] = useState(DEFAULT_COURT_PRICE);
+  const [newCourtPrice, setNewCourtPrice] = useState(String(DEFAULT_COURT_PRICE));
   const canAccessAdmin = Boolean(profile?.isAdmin);
 
   const requestConfirmation = (message) => {
@@ -207,6 +217,11 @@ function App() {
     const holidayDoc = await getDoc(doc(db, 'settings', 'holidays'));
     const holidayDates = holidayDoc.exists() ? holidayDoc.data().dates || [] : [];
     setHolidays(holidayDates);
+
+    const pricingDoc = await getDoc(doc(db, 'settings', 'pricing'));
+    const savedCourtPrice = pricingDoc.exists() ? parseCourtPrice(pricingDoc.data().courtPrice) : DEFAULT_COURT_PRICE;
+    setCourtPrice(savedCourtPrice);
+    setNewCourtPrice(String(savedCourtPrice));
 
     const bookingSnapshot = await getDocs(query(collection(db, 'bookings'), where('date', '==', date)));
     const bookedMap = {};
@@ -604,6 +619,16 @@ function App() {
     setHolidays(updated);
   };
 
+  const saveCourtPrice = async (event) => {
+    event.preventDefault();
+    const parsedPrice = parseCourtPrice(newCourtPrice);
+    if (!requestConfirmation('¿Estás seguro de que querés actualizar el valor de la cancha?')) return;
+    await setDoc(doc(db, 'settings', 'pricing'), { courtPrice: parsedPrice }, { merge: true });
+    setCourtPrice(parsedPrice);
+    setNewCourtPrice(String(parsedPrice));
+    setStatusMessage('Valor de la cancha actualizado correctamente.');
+  };
+
   const dayIndex = new Date(`${selectedDate}T00:00:00`).getDay();
 
   const slotsByCourt = useMemo(
@@ -797,6 +822,7 @@ function App() {
         {!loading && activeSection === 'reservas' && (
           <BookingPage
             user={user}
+            courtPrice={courtPrice}
             myBookings={myBookings}
             selectedDate={selectedDate}
             upcomingDates={upcomingDates}
@@ -858,9 +884,13 @@ function App() {
             holidays={holidays}
             newCourtName={newCourtName}
             newHoliday={newHoliday}
+            courtPrice={courtPrice}
+            newCourtPrice={newCourtPrice}
             onChangeNewCourt={setNewCourtName}
             onChangeNewHoliday={setNewHoliday}
+            onChangeCourtPrice={setNewCourtPrice}
             onAddCourt={addCourt}
+            onSaveCourtPrice={saveCourtPrice}
             onRemoveCourt={removeCourt}
             onSaveScheduleHour={saveScheduleHour}
             onAddHoliday={addHoliday}

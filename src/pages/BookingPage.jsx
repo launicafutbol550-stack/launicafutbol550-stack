@@ -40,6 +40,7 @@ const getNextBookingCountdown = (bookings = []) => {
 
 function BookingPage({
   user,
+  courtPrice,
   myBookings,
   selectedDate,
   upcomingDates,
@@ -58,6 +59,8 @@ function BookingPage({
   const canGoNext = selectedDateIndex < upcomingDates.length - 1;
   const isHoliday = holidays.includes(selectedDate);
   const dayIndex = new Date(`${selectedDate}T00:00:00`).getDay();
+  const perPlayer7v7 = Math.ceil(courtPrice / 14);
+  const perPlayer6v6 = Math.ceil(courtPrice / 12);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -85,11 +88,10 @@ function BookingPage({
         <summary>ℹ️ Información importante del turno</summary>
         <div className="booking-info-content">
           <p>
-            <strong>Valor del turno:</strong> $58.800 (fijo).
+            <strong>Valor del turno:</strong> ${courtPrice.toLocaleString('es-AR')}.
           </p>
           <p>
-            Se divide entre todos los jugadores: 7 vs 7 = $4200 por persona, 6 vs 6 = $4900 por persona y así
-            sucesivamente.
+            Se divide entre todos los jugadores: 7 vs 7 = ${perPlayer7v7.toLocaleString('es-AR')} por persona, 6 vs 6 = ${perPlayer6v6.toLocaleString('es-AR')} por persona y así sucesivamente.
           </p>
           <p>
             Reservas únicamente por WhatsApp. El mismo día del turno (10:00 a 12:00 hs) enviamos mensaje de
