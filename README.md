@@ -38,6 +38,8 @@ VITE_FIREBASE_FUNCTIONS_REGION=us-central1
 > Importante: cada variable debe ir en **su propia línea**. Si pegás todo junto con `\n`, Firebase no inicializa correctamente.
 > Nota: `VITE_FIREBASE_FUNCTIONS_REGION` debe ser una **región** (ej: `us-central1`), no un Measurement ID (`G-...`).
 
+> Si en consola aparece `CONFIGURATION_NOT_FOUND` al registrar/iniciar sesión, el problema está en Firebase Auth del proyecto (API key de otro proyecto o Authentication no habilitado), no en Firestore.
+
 ## Instalación y ejecución
 
 ```bash
