@@ -7,9 +7,13 @@ function AdminPage({
   holidays,
   newCourtName,
   newHoliday,
+  courtPrice,
+  newCourtPrice,
   onChangeNewCourt,
   onChangeNewHoliday,
+  onChangeCourtPrice,
   onAddCourt,
+  onSaveCourtPrice,
   onRemoveCourt,
   onSaveScheduleHour,
   onAddHoliday,
@@ -142,6 +146,20 @@ function AdminPage({
                 </div>
               </article>
             ))}
+
+
+            <h4>Precio de la cancha</h4>
+            <form onSubmit={onSaveCourtPrice} className="inline-form">
+              <input
+                type="number"
+                step="any"
+                value={newCourtPrice}
+                onChange={(event) => onChangeCourtPrice(event.target.value)}
+                placeholder="Valor total de la cancha"
+              />
+              <button type="submit">Actualizar precio</button>
+            </form>
+            <p className="admin-panel-subtitle">Valor actual: ${courtPrice.toLocaleString('es-AR')}.</p>
 
             <h4>Feriados</h4>
             <form onSubmit={onAddHoliday} className="inline-form">
