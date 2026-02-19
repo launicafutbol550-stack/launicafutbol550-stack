@@ -354,51 +354,29 @@ function App() {
       return;
     }
 
-    if (!requestConfirmation(`¿Estás seguro de que querés reservar el turno de las ${hour}:00?`)) return;
+    await setDoc(doc(db, 'fixedBookings', fixedId), { status: nextStatus, updatedAt: serverTimestamp() }, { merge: true });
 
-    setBookingInProgress(true);
-    try {
-      await runTransaction(db, async (transaction) => {
-        const bookingId = `${selectedDate}_${courtId}_${hour}`;
-        const bookingRef = doc(db, 'bookings', bookingId);
-        const existingBooking = await transaction.get(bookingRef);
-
-        if (existingBooking.exists()) {
-          throw new Error('SLOT_ALREADY_BOOKED');
-        }
-
-        transaction.set(bookingRef, {
-          courtId,
-          hour,
-          date: selectedDate,
-          userId: user.uid,
-          userName: `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim(),
-          userPhone: profile?.phone || '',
-          status: 'reservado',
-          confirmationToken: buildConfirmationToken(),
-          createdAt: serverTimestamp()
-        });
-      });
-
-      setStatusMessage(`Turno reservado para las ${hour}:00.`);
-      await Promise.all([loadCoreData(selectedDate), loadMyBookings(user.uid)]);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'SLOT_ALREADY_BOOKED') {
-        setStatusMessage('Ese turno ya fue reservado por otra persona. Elegí otro horario.');
-      } else {
-        setStatusMessage('No se pudo reservar el turno. Intentá nuevamente.');
+    if (nextStatus === 'active') {
+      const updatedDoc = await getDoc(doc(db, 'fixedBookings', fixedId));
+      if (updatedDoc.exists()) {
+        await ensureFixedBookingOccurrences({ id: fixedId, ...updatedDoc.data() });
       }
-      await loadCoreData(selectedDate);
-    } finally {
-      setBookingInProgress(false);
     }
+
+    await loadFixedBookings(user?.uid, canAccessAdmin);
+    await loadCoreData(selectedDate);
+    if (user?.uid) await loadMyBookings(user.uid);
   };
 
-  const cancelBooking = async (bookingId) => {
-    if (!requestConfirmation('¿Estás seguro de que querés cancelar esta reserva?')) return;
-    await deleteDoc(doc(db, 'bookings', bookingId));
-    setStatusMessage('Reserva cancelada correctamente.');
-    await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
+  const cancelFixedBooking = async (fixedId) => {
+    if (!requestConfirmation('¿Querés cancelar definitivamente este turno fijo?')) return;
+    await setDoc(
+      doc(db, 'fixedBookings', fixedId),
+      { status: 'cancelled', cancelledBy: canAccessAdmin ? 'admin' : 'user', updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+    setStatusMessage('Turno fijo cancelado.');
+    await loadFixedBookings(user?.uid, canAccessAdmin);
   };
 
   const createFixedBookingFromBooking = async (booking) => {
