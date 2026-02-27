@@ -23,6 +23,29 @@ body {
   padding: 1.2rem;
 }
 
+
+.auth-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #334155;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.92);
+  padding: 0.7rem 0.85rem;
+}
+
+.auth-topbar-status {
+  color: #dbeafe;
+}
+
+.auth-topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .hero {
   display: flex;
   gap: 1rem;
@@ -56,8 +79,8 @@ p {
 }
 
 .logo {
-  width: 80px;
-  height: 80px;
+  width: 140px;
+  height: 140px;
   border-radius: 999px;
   object-fit: cover;
   border: 2px solid #1d4ed8;
@@ -66,9 +89,70 @@ p {
 
 .main-nav {
   margin: 1rem 0;
-  display: flex;
+  display: grid;
   gap: 0.6rem;
-  flex-wrap: wrap;
+}
+
+.menu-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  background: #0f172a;
+  color: #dbeafe;
+  border-color: #334155;
+}
+
+.menu-toggle-open {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.main-nav-items {
+  display: none;
+  gap: 0.5rem;
+  border: 1px solid #334155;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.82);
+  padding: 0.55rem;
+}
+
+.main-nav-items .nav-pill {
+  width: 100%;
+}
+
+.main-nav-items-open {
+  display: grid;
+}
+
+.section-guide {
+  margin: 0.2rem 0 1rem;
+  border: 1px solid #334155;
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 0.65rem 0.8rem;
+  color: #cbd5e1;
+}
+
+.section-guide-title {
+  font-weight: 700;
+  color: #bfdbfe;
+}
+
+.nav-pill {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.nav-pill-label {
+  font-weight: 700;
+}
+
+.nav-pill-hint {
+  font-size: 0.78rem;
+  opacity: 0.9;
 }
 
 .nav-pill,
@@ -103,6 +187,100 @@ button:hover {
   border: 1px solid #334155;
   border-radius: 1rem;
   padding: 1rem;
+}
+
+.home-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.home-hero {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.home-book-btn {
+  width: fit-content;
+}
+
+.info-carousel {
+  border: 1px solid #334155;
+  border-radius: 0.9rem;
+  background: #0b1220;
+  padding: 0.85rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.carousel-viewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.45s ease;
+}
+
+.info-block {
+  min-width: 100%;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.carousel-arrow {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  padding: 0;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  background: #1e293b;
+  color: #dbeafe;
+  border-color: #334155;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  grid-column: 1 / -1;
+}
+
+.carousel-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  padding: 0;
+  border: 1px solid #64748b;
+  background: #1e293b;
+}
+
+.carousel-dot-active {
+  border-color: #38bdf8;
+  background: #38bdf8;
+}
+
+.home-footer {
+  color: #bfdbfe;
+}
+
+.home-photo-block {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.home-photo {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 0.9rem;
+  border: 1px solid #334155;
 }
 
 main {
@@ -153,18 +331,47 @@ main {
 
 .week-nav {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.week-nav-step {
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1rem;
+  display: grid;
+  place-items: center;
 }
 
 .week-chips {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 0.35rem;
 }
 
 .day-chip {
   background: #1e293b;
   color: #bfdbfe;
+  min-height: 2.45rem;
+  padding: 0.35rem 0.3rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.08rem;
+  line-height: 1.05;
+}
+
+.day-chip-weekday {
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.day-chip-date {
+  font-size: 0.8rem;
 }
 
 .day-chip-active {
@@ -214,6 +421,10 @@ button:disabled {
 
 .slot-open {
   background: linear-gradient(145deg, #22c55e, #16a34a);
+}
+
+.slot-more-btn {
+  justify-self: start;
 }
 
 .auth-flow,
@@ -428,6 +639,40 @@ select {
   gap: 0.3rem;
 }
 
+.admin-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.admin-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.free-slot-row {
+  background: #0b1f13;
+}
+
+.group-day-header-row td {
+  background: #1e293b;
+  font-weight: 800;
+}
+
+.group-court-subheader-row td {
+  background: #0f172a;
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
 .btn-whatsapp {
   display: inline-block;
   border: 1px solid #166534;
@@ -497,7 +742,8 @@ li {
 
   .landing-topbar,
   .admin-court-header,
-  .inline-form {
+  .inline-form,
+  .auth-topbar {
     flex-direction: column;
     align-items: stretch;
   }
@@ -517,9 +763,20 @@ li {
     text-align: center;
   }
 
-  .main-nav {
+  .auth-topbar-actions {
+    width: 100%;
+  }
+
+  .auth-topbar-actions button {
+    flex: 1;
+  }
+
+  .main-nav-items {
+    display: none;
+  }
+
+  .main-nav-items-open {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .main-nav .nav-pill {
@@ -528,6 +785,57 @@ li {
 
   .slot-grid {
     grid-template-columns: 1fr;
+  }
+
+  .info-carousel {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-arrow {
+    display: none;
+  }
+
+  .week-nav {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'chips prev'
+      'chips next';
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .week-chips {
+    grid-area: chips;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 0.3rem;
+  }
+
+  .week-nav-step {
+    width: 1.95rem;
+    height: 1.95rem;
+  }
+
+  .week-nav-step:first-of-type {
+    grid-area: prev;
+    justify-self: end;
+  }
+
+  .week-nav-step:last-of-type {
+    grid-area: next;
+    justify-self: end;
+  }
+
+  .day-chip {
+    min-height: 2.25rem;
+    padding: 0.3rem 0.2rem;
+  }
+
+  .day-chip-weekday {
+    font-size: 0.62rem;
+  }
+
+  .day-chip-date {
+    font-size: 0.74rem;
   }
 }
 

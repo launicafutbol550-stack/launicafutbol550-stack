@@ -15,6 +15,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   runTransaction,
   serverTimestamp,
@@ -23,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { DEFAULT_SCHEDULE, emptyLogin, emptyRegister } from './constants';
-import { buildUpcomingDates, isPastSlotInArgentina, toLocalDate } from './utils/date';
+import { buildUpcomingDates, isPastSlotInArgentina, isTooLateToCancelInArgentina, toLocalDate } from './utils/date';
 import Header from './components/Header';
 import MainNav from './components/MainNav';
 import BookingPage from './pages/BookingPage';
@@ -71,6 +72,7 @@ const parsePhone = (phone = '') => {
 };
 
 const isProfileComplete = (profile) => Boolean(profile?.firstName && profile?.phone);
+const isUserBlocked = (profile) => Boolean(profile?.isBlocked);
 
 const buildConfirmationToken = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -130,6 +132,30 @@ const formatRaffleDrawDate = (date = new Date()) =>
     timeStyle: 'short'
   }).format(date);
 
+
+const SECTION_HELP = {
+  reservas: {
+    title: 'Reservas',
+    description: 'Elegí fecha y horario para reservar tu cancha en pocos pasos.'
+  },
+  ganadores: {
+    title: 'Últimos ganadores',
+    description: 'Consultá los resultados de los sorteos más recientes.'
+  },
+  'mis-reservas': {
+    title: 'Mis reservas',
+    description: 'Revisá, confirmá o cancelá tus turnos activos.'
+  },
+  registro: {
+    title: 'Mi cuenta',
+    description: 'Iniciá sesión, registrate o editá tus datos de perfil.'
+  },
+  admin: {
+    title: 'Administración',
+    description: 'Configurá canchas, horarios, feriados y usuarios.'
+  }
+};
+
 const parseCourtPrice = (value) => {
   const normalizedValue = Number(value);
   if (!Number.isFinite(normalizedValue) || normalizedValue < 0) return DEFAULT_COURT_PRICE;
@@ -177,12 +203,37 @@ function App() {
   const [raffleAnimating, setRaffleAnimating] = useState(false);
   const canAccessAdmin = Boolean(profile?.isAdmin);
 
+  const visibleMyBookings = useMemo(
+    () => myBookings.filter((booking) => !isPastSlotInArgentina(booking.date, booking.hour)),
+    [myBookings]
+  );
+
+  const visibleMyFixedBookings = useMemo(
+    () => fixedBookings.filter((entry) => entry.userId === user?.uid && entry.status !== 'cancelled'),
+    [fixedBookings, user?.uid]
+  );
+
+  const visibleAdminFixedBookings = useMemo(
+    () => fixedBookings.filter((entry) => entry.status !== 'cancelled'),
+    [fixedBookings]
+  );
+
   const requestConfirmation = (message) => {
     if (typeof window === 'undefined') return true;
     return window.confirm(message);
   };
 
   const isValidFixedBookingId = (fixedBookingId) => typeof fixedBookingId === 'string' && fixedBookingId.trim().length > 0;
+
+  const mapBookings = (snapshot) =>
+    snapshot.docs
+      .map((booking) => ({ id: booking.id, ...booking.data() }))
+      .sort((a, b) => `${a.date || ''}-${a.hour || 0}`.localeCompare(`${b.date || ''}-${b.hour || 0}`));
+
+  const mapFixedBookings = (snapshot) =>
+    snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => `${a.weekday || 0}-${a.hour || 0}`.localeCompare(`${b.weekday || 0}-${b.hour || 0}`));
 
   const loadMyBookings = async (uid) => {
     if (!uid) {
@@ -295,6 +346,144 @@ function App() {
 
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const unsubscribeCourts = onSnapshot(collection(db, 'courts'), (snapshot) => {
+      const courtsData = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      setCourts(courtsData);
+    });
+
+    const unsubscribeSchedules = onSnapshot(collection(db, 'schedules'), (snapshot) => {
+      const scheduleEntries = {};
+      snapshot.docs.forEach((scheduleDoc) => {
+        scheduleEntries[scheduleDoc.id] = scheduleDoc.data();
+      });
+      setSchedules((previous) => {
+        const mergedSchedules = { ...previous, ...scheduleEntries };
+        courts.forEach((court) => {
+          if (!mergedSchedules[court.id]) {
+            mergedSchedules[court.id] = DEFAULT_SCHEDULE;
+          }
+        });
+        return mergedSchedules;
+      });
+    });
+
+    const unsubscribeHolidays = onSnapshot(doc(db, 'settings', 'holidays'), (holidayDoc) => {
+      const holidayDates = holidayDoc.exists() ? holidayDoc.data().dates || [] : [];
+      setHolidays(holidayDates);
+    });
+
+    const unsubscribePricing = onSnapshot(doc(db, 'settings', 'pricing'), (pricingDoc) => {
+      const savedCourtPrice = pricingDoc.exists() ? parseCourtPrice(pricingDoc.data().courtPrice) : DEFAULT_COURT_PRICE;
+      setCourtPrice(savedCourtPrice);
+      setNewCourtPrice(String(savedCourtPrice));
+    });
+
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (usersSnapshot) => {
+      const usersData = usersSnapshot.docs
+        .map((userDoc) => ({ id: userDoc.id, ...userDoc.data() }))
+        .filter((entry) => entry.email)
+        .sort((a, b) => a.email.localeCompare(b.email));
+
+      setAllUsers(usersData);
+      setAdminUsers(usersData.filter((entry) => entry.isAdmin));
+    });
+
+    const unsubscribeRaffles = onSnapshot(collection(db, 'raffleHistory'), (rafflesSnapshot) => {
+      const rafflesData = rafflesSnapshot.docs
+        .map((raffleDoc) => ({ id: raffleDoc.id, ...raffleDoc.data() }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        })
+        .slice(0, 12);
+      setRaffleWinners(rafflesData);
+    });
+
+    return () => {
+      unsubscribeCourts();
+      unsubscribeSchedules();
+      unsubscribeHolidays();
+      unsubscribePricing();
+      unsubscribeUsers();
+      unsubscribeRaffles();
+    };
+  }, []);
+
+  useEffect(() => {
+    setSchedules((previous) => {
+      const nextSchedules = { ...previous };
+      let hasChanges = false;
+
+      courts.forEach((court) => {
+        if (!nextSchedules[court.id]) {
+          nextSchedules[court.id] = DEFAULT_SCHEDULE;
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? nextSchedules : previous;
+    });
+  }, [courts]);
+
+  useEffect(() => {
+    const unsubscribeDayBookings = onSnapshot(
+      query(collection(db, 'bookings'), where('date', '==', selectedDate)),
+      (bookingSnapshot) => {
+        const bookedMap = {};
+        bookingSnapshot.forEach((booking) => {
+          const data = booking.data();
+          bookedMap[`${data.courtId}-${data.hour}`] = { id: booking.id, ...data };
+        });
+        setBookingsByCourtHour(bookedMap);
+      }
+    );
+
+    return () => unsubscribeDayBookings();
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const unsubscribeAdminBookings = onSnapshot(collection(db, 'bookings'), (allBookingsSnapshot) => {
+      setAdminBookings(mapBookings(allBookingsSnapshot));
+    });
+
+    return () => unsubscribeAdminBookings();
+  }, []);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setMyBookings([]);
+      return undefined;
+    }
+
+    const unsubscribeMyBookings = onSnapshot(
+      query(collection(db, 'bookings'), where('userId', '==', user.uid)),
+      (bookingsSnapshot) => {
+        setMyBookings(mapBookings(bookingsSnapshot));
+      }
+    );
+
+    return () => unsubscribeMyBookings();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid && !canAccessAdmin) {
+      setFixedBookings([]);
+      return undefined;
+    }
+
+    const fixedBookingsQuery = canAccessAdmin
+      ? collection(db, 'fixedBookings')
+      : query(collection(db, 'fixedBookings'), where('userId', '==', user.uid));
+
+    const unsubscribeFixedBookings = onSnapshot(fixedBookingsQuery, (fixedBookingsSnapshot) => {
+      setFixedBookings(mapFixedBookings(fixedBookingsSnapshot));
+    });
+
+    return () => unsubscribeFixedBookings();
+  }, [canAccessAdmin, user?.uid]);
 
   const loadCoreData = async (date) => {
     const courtsSnapshot = await getDocs(collection(db, 'courts'));
@@ -562,6 +751,11 @@ function App() {
       return;
     }
 
+    if (isUserBlocked(profile)) {
+      setStatusMessage('Tu usuario está bloqueado para reservar turnos. Contactá a administración.');
+      return;
+    }
+
     const slotKey = `${courtId}-${hour}`;
     if (bookingsByCourtHour[slotKey]) return;
 
@@ -617,9 +811,16 @@ function App() {
     }
   };
 
-  const cancelBooking = async (bookingId) => {
+  const cancelBooking = async (booking) => {
+    if (!booking?.id) return;
+
+    if (isTooLateToCancelInArgentina(booking.date, booking.hour)) {
+      setStatusMessage('Es muy tarde para cancelar el turno.');
+      return;
+    }
+
     if (!requestConfirmation('¿Estás seguro de que querés cancelar esta reserva?')) return;
-    await deleteDoc(doc(db, 'bookings', bookingId));
+    await deleteDoc(doc(db, 'bookings', booking.id));
     setStatusMessage('Reserva cancelada correctamente.');
     await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
   };
@@ -727,12 +928,95 @@ function App() {
     await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
   };
 
+  const prefillManualBooking = ({ date, courtId, hour }) => {
+    setActiveSection('admin');
+    setManualBookingData((prev) => ({
+      ...prev,
+      date: date || prev.date,
+      courtId: courtId || prev.courtId,
+      hour: hour !== undefined && hour !== null ? String(hour) : prev.hour
+    }));
+    setStatusMessage('Se precargó el turno libre en la planilla manual.');
+  };
+
+  const moveBookingFromAdmin = async (bookingId, nextSlot) => {
+    if (!bookingId || !nextSlot?.date || !nextSlot?.courtId || nextSlot?.hour === undefined || nextSlot?.hour === null) {
+      setStatusMessage('Completá fecha, cancha y horario para mover el turno.');
+      return;
+    }
+
+    if (!requestConfirmation('¿Querés mover este turno a la nueva fecha/horario?')) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const currentBookingRef = doc(db, 'bookings', bookingId);
+        const currentBookingDoc = await transaction.get(currentBookingRef);
+        if (!currentBookingDoc.exists()) {
+          throw new Error('BOOKING_NOT_FOUND');
+        }
+
+        const bookingData = currentBookingDoc.data();
+        const targetBookingId = `${nextSlot.date}_${nextSlot.courtId}_${Number(nextSlot.hour)}`;
+        const targetBookingRef = doc(db, 'bookings', targetBookingId);
+        const targetBookingDoc = await transaction.get(targetBookingRef);
+
+        if (targetBookingDoc.exists() && targetBookingId !== bookingId) {
+          throw new Error('SLOT_ALREADY_BOOKED');
+        }
+
+        transaction.set(targetBookingRef, {
+          ...bookingData,
+          date: nextSlot.date,
+          courtId: nextSlot.courtId,
+          hour: Number(nextSlot.hour),
+          updatedAt: serverTimestamp()
+        });
+
+        if (targetBookingId !== bookingId) {
+          transaction.delete(currentBookingRef);
+        }
+      });
+
+      setStatusMessage('Turno movido correctamente.');
+      await Promise.all([loadCoreData(selectedDate), loadMyBookings(user?.uid)]);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'SLOT_ALREADY_BOOKED') {
+        setStatusMessage('El nuevo horario ya está ocupado por otro turno.');
+      } else if (error instanceof Error && error.message === 'BOOKING_NOT_FOUND') {
+        setStatusMessage('El turno original ya no existe.');
+      } else {
+        setStatusMessage('No se pudo mover el turno. Intentá nuevamente.');
+      }
+      await loadCoreData(selectedDate);
+    }
+  };
+
   const makeAdministrator = async (uid) => {
     if (!requestConfirmation('¿Estás seguro de que querés otorgar permisos de administrador?')) return;
     await setDoc(doc(db, 'users', uid), { isAdmin: true }, { merge: true });
     setStatusMessage('Usuario actualizado como administrador.');
     setSelectedRoleUser(null);
     setRoleSearch('');
+    await loadCoreData(selectedDate);
+  };
+
+  const blockUser = async (uid) => {
+    if (!requestConfirmation('¿Estás seguro de que querés bloquear a este usuario?')) return;
+    await setDoc(doc(db, 'users', uid), { isBlocked: true }, { merge: true });
+    setStatusMessage('Usuario bloqueado para reservar turnos.');
+    if (selectedRoleUser?.id === uid) {
+      setSelectedRoleUser((prev) => (prev ? { ...prev, isBlocked: true } : prev));
+    }
+    await loadCoreData(selectedDate);
+  };
+
+  const unblockUser = async (uid) => {
+    if (!requestConfirmation('¿Estás seguro de que querés desbloquear a este usuario?')) return;
+    await setDoc(doc(db, 'users', uid), { isBlocked: false }, { merge: true });
+    setStatusMessage('Usuario desbloqueado.');
+    if (selectedRoleUser?.id === uid) {
+      setSelectedRoleUser((prev) => (prev ? { ...prev, isBlocked: false } : prev));
+    }
     await loadCoreData(selectedDate);
   };
 
@@ -1079,6 +1363,14 @@ function App() {
   };
 
   const parsedProfilePhone = parsePhone(profile?.phone || '');
+  const activeSectionDetails = SECTION_HELP[activeSection];
+
+  const handleChangeSection = (nextSection) => {
+    setActiveSection(nextSection);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const profileDraft = {
     fullName: registerData.fullName || `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim(),
@@ -1089,8 +1381,43 @@ function App() {
 
   return (
     <div className="app">
+      <MainNav activeSection={activeSection} onChangeSection={handleChangeSection} canAccessAdmin={canAccessAdmin} />
+      <section className="auth-topbar" aria-label="Accesos de cuenta">
+        <div className="auth-topbar-status">
+          {user ? (
+            <p>
+              Sesión iniciada como{' '}
+              <strong>{`${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || user.email}</strong>
+            </p>
+          ) : (
+            <p>No iniciaste sesión.</p>
+          )}
+        </div>
+        <div className="auth-topbar-actions">
+          {!user ? (
+            <>
+              <button type="button" className="btn-secondary" onClick={() => goToAuth('login')}>
+                Login
+              </button>
+              <button type="button" onClick={() => goToAuth('register')}>
+                Registrarme
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn-secondary" onClick={logoutUser}>
+              Cerrar sesión
+            </button>
+          )}
+        </div>
+      </section>
       <Header />
-      <MainNav activeSection={activeSection} onChangeSection={setActiveSection} canAccessAdmin={canAccessAdmin} />
+
+      {activeSectionDetails ? (
+        <section className="section-guide" aria-live="polite">
+          <p className="section-guide-title">{activeSectionDetails.title}</p>
+          <p>{activeSectionDetails.description}</p>
+        </section>
+      ) : null}
 
       <main>
         {loading ? (
@@ -1141,8 +1468,8 @@ function App() {
         {!loading && activeSection === 'mis-reservas' && (
           <MyBookingsPage
             user={user}
-            bookings={myBookings}
-            fixedBookings={fixedBookings.filter((entry) => entry.userId === user?.uid)}
+            bookings={visibleMyBookings}
+            fixedBookings={visibleMyFixedBookings}
             courts={courts}
             onCancelBooking={cancelBooking}
             onCreateFixedBooking={createFixedBookingFromBooking}
@@ -1214,6 +1541,8 @@ function App() {
             adminUsers={adminUsers}
             onMakeAdmin={makeAdministrator}
             onRemoveAdmin={removeAdministrator}
+            onBlockUser={blockUser}
+            onUnblockUser={unblockUser}
             manualBookingData={manualBookingData}
             onChangeManualBookingField={(field, value) =>
               setManualBookingData((prev) => ({ ...prev, [field]: value }))
@@ -1222,7 +1551,9 @@ function App() {
             manualBookableDates={adminBookableDates}
             manualBookableCourts={manualBookingAvailability.courts}
             manualBookableHours={manualBookingAvailability.hoursByCourt[manualBookingData.courtId] || []}
-            fixedBookings={fixedBookings}
+            onPrefillManualBooking={prefillManualBooking}
+            onMoveBooking={moveBookingFromAdmin}
+            fixedBookings={visibleAdminFixedBookings}
             onUpdateFixedStatus={updateFixedBookingStatus}
             onCancelFixedBooking={cancelFixedBooking}
             raffleDraft={raffleDraft}
